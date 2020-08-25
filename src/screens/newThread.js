@@ -13,27 +13,74 @@ import {
   Dimensions,
   KeyboardAvoidingView,
 } from 'react-native';
+import {openDatabase} from 'react-native-sqlite-storage';
+
 const {width, height} = Dimensions.get('window');
 export default class NewThread extends Component {
   constructor(props) {
     super(props);
 
-    this.state = {msg: ''};
+    this.state = {title: '', body: ''};
   }
+
+  addThread = () => {
+    var db = openDatabase({name: 'dmis_chat.db', createFromLocation: 1});
+    console.log('Starting');
+    db.transaction(function (txn) {
+      txn.executeSql(
+        'INSERT INTO chat (chat_id, uname, display_name, chat_title, chat_body, has_attachment, chat_time, thread_parent, thread_root) VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [
+          '036de6df-e4a3-11ea-a1f9-00155d1e5b38',
+          'tuda6',
+          'Monie Kamsesa',
+          'These things are NOT EASY',
+          'Some guyt says THEY ARE. What is he smoking!',
+          'N',
+          '2020-08-25 18:16:29',
+          null,
+          null,
+        ],
+        function (tx, res) {
+          console.log(res);
+          console.log('item:', res.rows.length);
+          if (res.rows.length == 0) {
+            console.log('Nada');
+          }
+        },
+        function (err) {
+          console.log(err);
+        },
+      );
+    });
+    this.props.navigation.state.params.navigateToHome();
+  };
 
   render() {
     return (
       <View style={{flex: 1}}>
-        <Button
-          title="Add Participants"
-          onPress={() => this.props.navigateToUserList()}
-        />
+        <View style={{margin: 10}}>
+          <Text>Participants:</Text>
+          <View style={{flexDirection: 'row', flexWrap: 'wrap', marginTop: 5}}>
+            {this.props.navigation.state.params.participants.map((p, i) => (
+              <View
+                key={i}
+                style={{
+                  borderWidth: 1,
+                  borderRadius: 3,
+                  padding: 2,
+                  margin: 2,
+                }}>
+                <Text>{p.label}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
         <View style={styles.input}>
           <TextInput
             style={{flex: 1}}
-            value={this.state.msg}
+            value={this.state.title}
             placeholderTextColor="#696969"
-            onChangeText={(msg) => this.setState({msg})}
+            onChangeText={(title) => this.setState({title})}
             blurOnSubmit={false}
             placeholder="Title"
             returnKeyType="send"
@@ -42,20 +89,22 @@ export default class NewThread extends Component {
         <View style={styles.input}>
           <TextInput
             style={{flex: 1}}
-            value={this.state.msg}
+            value={this.state.body}
             placeholderTextColor="#696969"
-            onChangeText={(msg) => this.setState({msg})}
+            onChangeText={(body) => this.setState({body})}
             blurOnSubmit={false}
             placeholder="Body"
             returnKeyType="send"
             numberOfLines={9}
           />
         </View>
-        <Button
-          onPress={() => this.props.navigateToHome()}
-          style={{width: 50}}
-          title="Submit"
-        />
+        <View style={{width: '50%', alignSelf: 'center'}}>
+          <Button
+            onPress={() => this.addThread()}
+            style={{width: 50}}
+            title="Submit"
+          />
+        </View>
       </View>
     );
   }

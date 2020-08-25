@@ -6,16 +6,18 @@ import {
   StyleSheet,
   View,
   AsyncStorage,
+  Image,
+  Text,
 } from 'react-native';
 
 import {createSwitchNavigator, createAppContainer} from 'react-navigation';
 import {createStackNavigator} from 'react-navigation-stack';
 import Home from './src/screens/home';
 import Thread from './src/screens/thread';
-import NewThread from './src/screens/newThread';
-import UserList from './src/screens/userList';
-import {TextInput} from 'react-native-gesture-handler';
+import {TextInput, ScrollView} from 'react-native-gesture-handler';
 import {openDatabase} from 'react-native-sqlite-storage';
+import SelectMultiple from 'react-native-select-multiple';
+import NewThread from './src/screens/newThread';
 
 class SignInScreen extends React.Component {
   state = {
@@ -71,7 +73,7 @@ class SignInScreen extends React.Component {
     db.transaction((txn) => {
       txn.executeSql('SELECT * FROM chat_entity', [], async (tx, res) => {
         const users = res.rows.raw().map((u) => {
-          return {username: u.entity_name, password: u.pword};
+          return {username: u.entity_id, password: u.pword};
         });
         // console.log(users);
         // console.log(this.state.user);
@@ -119,7 +121,7 @@ class HomeScreen extends React.Component {
       <>
         <Home
           navigateToConversation={this._showMoreApp}
-          navigateToNewThread={this._showNewThread}
+          navigateToNewThread={this._showSelectParticipants}
         />
         <Button title="sign me out" onPress={this._signOutAsync} />
       </>
@@ -130,8 +132,8 @@ class HomeScreen extends React.Component {
     this.props.navigation.navigate('Other', {item: item});
   };
 
-  _showNewThread = () => {
-    this.props.navigation.navigate('NewThread');
+  _showSelectParticipants = () => {
+    this.props.navigation.navigate('SelectParticipants');
   };
 
   _signOutAsync = async () => {
@@ -165,66 +167,91 @@ class NewThreadScreen extends React.Component {
   state = {
     users: {},
   };
+
+  render() {
+    return <NewThread navigation={this.props.navigation} />;
+  }
+
+  _signOutAsync = async () => {
+    await AsyncStorage.clear();
+    this.props.navigation.navigate('Auth');
+  };
+}
+
+class SelectParticipantsScreen extends React.Component {
+  static navigationOptions = {
+    title: 'Select Participants',
+  };
+  state = {
+    users: [],
+    selectedUsers: [],
+  };
   componentDidMount() {
     var db = openDatabase({name: 'dmis_chat.db', createFromLocation: 1});
+    var users = [];
     db.transaction((txn) => {
       txn.executeSql('SELECT * FROM chat_entity', [], (tx, res) => {
-        var users = {};
-        var x = res.rows.raw().map((u) => {
-          var use = {};
-          use[u.entity_id] = u.entity_name;
-          return use;
+        users = res.rows.raw().map((u) => {
+          return {label: u.entity_name, value: u.entity_id};
         });
-        for (let index = 0; index < x.length; index++) {
-          users = {...users, ...x[index]};
-        }
-        console.log(users);
+
         this.setState({users: users});
       });
     });
   }
-  _showUserList = () => {
-    this.props.navigation.navigate('UserList');
+
+  _signOutAsync = async () => {
+    await AsyncStorage.clear();
+    this.props.navigation.navigate('Auth');
   };
 
-  _showHome = () => {
+  _navigateHome = async () => {
     this.props.navigation.navigate('Home');
+  };
+
+  _showNewThread = () => {
+    this.props.navigation.navigate('NewThread', {
+      participants: this.state.selectedUsers,
+      navigateToHome: this._navigateHome,
+    });
+  };
+
+  renderLabel = (label, style) => {
+    return (
+      <View style={{flexDirection: 'row', alignItems: 'center'}}>
+        <View style={{marginLeft: 10}}>
+          <Text style={style}>{label}</Text>
+        </View>
+      </View>
+    );
+  };
+
+  onSelectionsChange = (selectedUsers) => {
+    // selectedFruits is array of { label, value }
+    this.setState({selectedUsers});
   };
 
   render() {
     const userList = this.state.users;
     return (
-      <UserList
-        options={userList}
-        search={true} // should show search bar?
-        multiple={true} //
-        placeholder={'Search'}
-        placeholderTextColor={'#757575'}
-        returnValue={'labevaluel'} // label or value
-        callback={(res) => {
-          console.log(res);
-        }} // callback, array of selected items
-        rowBackgroundColor={'#eee'}
-        rowHeight={40}
-        rowRadius={5}
-        iconColor={'#00a2dd'}
-        iconSize={30}
-        selectedIconName={'ios-checkmark-circle-outline'}
-        unselectedIconName={'ios-radio-button-off-outline'}
-        scrollViewHeight={130}
-        selected={[1, 2]} // list of options which are selected by default
-      />
+      <View>
+        <View style={{width: '50%', alignSelf: 'center', margin: 7}}>
+          <Button
+            disabled={this.state.selectedUsers.length === 0 ? true : false}
+            title="next"
+            onPress={this._showNewThread}
+          />
+        </View>
+        <ScrollView>
+          <SelectMultiple
+            items={this.state.users}
+            renderLabel={this.renderLabel}
+            selectedItems={this.state.selectedUsers}
+            onSelectionsChange={this.onSelectionsChange}
+          />
+        </ScrollView>
+      </View>
     );
-  }
-}
-
-class UserListScreen extends React.Component {
-  static navigationOptions = {
-    title: 'Select Contacts',
-  };
-
-  render() {
-    return <UserList />;
   }
 }
 
@@ -266,7 +293,7 @@ const AppStack = createStackNavigator({
   Home: HomeScreen,
   Other: OtherScreen,
   NewThread: NewThreadScreen,
-  UserList: UserListScreen,
+  SelectParticipants: SelectParticipantsScreen,
 });
 const AuthStack = createStackNavigator({SignIn: SignInScreen});
 
