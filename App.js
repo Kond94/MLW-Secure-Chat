@@ -246,7 +246,6 @@ class SelectParticipantsScreen extends React.Component {
   };
 
   render() {
-    const userList = this.state.users;
     return (
       <View>
         <View style={{width: '50%', alignSelf: 'center', margin: 7}}>

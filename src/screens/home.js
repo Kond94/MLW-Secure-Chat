@@ -13,7 +13,6 @@ import {
 import {openDatabase} from 'react-native-sqlite-storage';
 
 import ActionButton from 'react-native-action-button';
-import Icon from 'react-native-vector-icons/Ionicons';
 
 export default class Users extends Component {
   state = {
