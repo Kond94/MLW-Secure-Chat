@@ -18,6 +18,13 @@ import {TextInput, ScrollView} from 'react-native-gesture-handler';
 import {openDatabase} from 'react-native-sqlite-storage';
 import SelectMultiple from 'react-native-select-multiple';
 import NewThread from './src/screens/newThread';
+import {LogBox} from 'react-native';
+
+LogBox.ignoreLogs([
+  'Warning: AsyncStorage',
+  'Warning: componentWillReceiveProps has been renamed',
+  'VirtualizedLists should never be nested',
+]);
 
 class SignInScreen extends React.Component {
   state = {
@@ -73,16 +80,23 @@ class SignInScreen extends React.Component {
     db.transaction((txn) => {
       txn.executeSql('SELECT * FROM chat_entity', [], async (tx, res) => {
         const users = res.rows.raw().map((u) => {
-          return {username: u.entity_id, password: u.pword};
+          return {
+            username: u.entity_id,
+            password: u.pword,
+            displayName: u.entity_name,
+          };
         });
-        // console.log(users);
-        // console.log(this.state.user);
         if (users.find((user) => user.username === this.state.user.username)) {
           if (
             users.find((user) => user.password === this.state.user.password)
           ) {
             await AsyncStorage.setItem('userToken', 'abc');
             await AsyncStorage.setItem('entity_name', this.state.user.username);
+            await AsyncStorage.setItem(
+              'entity_display_name',
+              users.find((user) => user.username === this.state.user.username)
+                .displayName,
+            );
             this.props.navigation.navigate('App');
           } else {
             alert('Please check your password');

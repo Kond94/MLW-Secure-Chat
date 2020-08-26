@@ -14,8 +14,9 @@ import {
   KeyboardAvoidingView,
   AsyncStorage,
 } from 'react-native';
-
+import ImagePicker from 'react-native-image-picker';
 import {openDatabase} from 'react-native-sqlite-storage';
+const addImage = require('../../assets/icons/addImage.png');
 const {width, height} = Dimensions.get('window');
 export default class Thread extends Component {
   constructor(props) {
@@ -23,10 +24,10 @@ export default class Thread extends Component {
     this.state = {
       msg: '',
       topic: {
-        time: '9:58 am',
-        title: 'Title goes here',
-        body: 'Blah blah blah blah blah Blah blah blah blah blah',
-        display_name: 'Kondwerani Kamsesa',
+        time: '',
+        title: '',
+        body: '',
+        display_name: '',
       },
       messages: [],
     };
@@ -47,7 +48,7 @@ export default class Thread extends Component {
   }
 
   setUname = async () => {
-    return await AsyncStorage.getItem('entity_name');
+    return await AsyncStorage.getItem('entity_display_name');
   };
   async componentDidMount() {
     var db = openDatabase({name: 'dmis_chat.db', createFromLocation: 1});
@@ -62,12 +63,11 @@ export default class Thread extends Component {
         [],
         (tx, res) => {
           const chats = res.rows.raw().map((i) => {
-            console.log(d, i.display_name);
-
             return {
               id: i.chat_id,
               msg: i.chat_body,
-              sent: i.display_name == d ? true : false,
+              sent:
+                i.display_name.toUpperCase() === d.toUpperCase() ? true : false,
               name: i.display_name,
               time: i.display_time,
             };
@@ -88,7 +88,7 @@ export default class Thread extends Component {
         msg: this.state.msg,
         image: 'https://www.bootdey.com/img/Content/avatar/avatar1.png',
       });
-      this.setState({messages: messages});
+      this.setState({messages: messages, msg: ''});
       setTimeout(() => {
         // this.reply();
       }, 2000);
@@ -143,15 +143,40 @@ export default class Thread extends Component {
           renderItem={this.renderItem}
         />
         <View style={{flexDirection: 'row'}}>
-          <TextInput
-            style={{...styles.input, flex: 0.9}}
-            value={this.state.msg}
-            placeholderTextColor="grey"
-            onChangeText={(msg) => this.setState({msg})}
-            placeholder="Type a message"
-          />
+          <TouchableOpacity
+            style={{
+              margin: 10,
+              alignSelf: 'center',
+              shadowColor: '#3d3d3d',
+              shadowRadius: 2,
+              shadowOpacity: 0.5,
+              shadowOffset: {
+                height: 1,
+              },
+            }}
+            onPress={() =>
+              ImagePicker.showImagePicker({}, (response) => {
+                console.log(response.uri);
+                this.setState({
+                  msg: 'Image Uri: ' + JSON.stringify(response.uri),
+                });
+                this.send();
+              })
+            }>
+            <Image source={addImage} style={{height: 40, width: 40}} />
+          </TouchableOpacity>
+          <View style={{flex: 1}}>
+            <TextInput
+              style={{...styles.input}}
+              value={this.state.msg}
+              placeholderTextColor="grey"
+              onChangeText={(msg) => this.setState({msg})}
+              placeholder="Type a message"
+            />
+          </View>
           <View
             style={{
+              margin: 10,
               alignSelf: 'center',
               shadowColor: '#3d3d3d',
               shadowRadius: 2,
@@ -206,7 +231,7 @@ const styles = StyleSheet.create({
   input: {
     padding: 10,
     backgroundColor: '#fff',
-    margin: 10,
+    marginVertical: 5,
     shadowColor: '#3d3d3d',
     shadowRadius: 2,
     shadowOpacity: 0.5,

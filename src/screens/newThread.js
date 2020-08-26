@@ -12,7 +12,11 @@ import {
   Button,
   Dimensions,
   KeyboardAvoidingView,
+  AsyncStorage,
 } from 'react-native';
+import ImagePicker from 'react-native-image-picker';
+const addImage = require('../../assets/icons/addImage.png');
+
 import {openDatabase} from 'react-native-sqlite-storage';
 
 const {width, height} = Dimensions.get('window');
@@ -22,42 +26,107 @@ export default class NewThread extends Component {
 
     this.state = {title: '', body: ''};
   }
+  setDname = async () => {
+    return await AsyncStorage.getItem('entity_display_name');
+  };
+  setEid = async () => {
+    return await AsyncStorage.getItem('entity_name');
+  };
 
-  addThread = () => {
-    var db = openDatabase({name: 'dmis_chat.db', createFromLocation: 1});
-    console.log('Starting');
+  getDate = () => {
+    let date_ob = new Date();
+
+    // adjust 0 before single digit date
+    let date = ('0' + date_ob.getDate()).slice(-2);
+
+    // current month
+    let month = ('0' + (date_ob.getMonth() + 1)).slice(-2);
+
+    // current year
+    let year = date_ob.getFullYear();
+
+    // current hours
+    let hours = date_ob.getHours();
+
+    // current minutes
+    let minutes = date_ob.getMinutes();
+
+    // current seconds
+    let seconds = date_ob.getSeconds();
+
+    // prints date & time in YYYY-MM-DD HH:MM:SS format
+    return (
+      year +
+      '-' +
+      month +
+      '-' +
+      date +
+      ' ' +
+      hours +
+      ':' +
+      minutes +
+      ':' +
+      seconds
+    );
+  };
+
+  makeid = (length) => {
+    var result = '';
+    var characters =
+      'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    var charactersLength = characters.length;
+    for (var i = 0; i < length; i++) {
+      result += characters.charAt(Math.floor(Math.random() * charactersLength));
+    }
+    return result;
+  };
+
+  addRecord = () => {};
+  addThread = async () => {
+    var db = openDatabase(
+      {name: 'dmis_chat.db', createFromLocation: 1},
+      () => {
+        console.log('succ');
+      },
+      () => {
+        console.log('err');
+      },
+    );
+    var dname = await this.setDname();
+    var uname = await this.setEid();
+    var time = this.getDate();
+
     db.transaction(function (txn) {
       txn.executeSql(
         'INSERT INTO chat (chat_id, uname, display_name, chat_title, chat_body, has_attachment, chat_time, thread_parent, thread_root) VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?)',
         [
-          '036de6df-e4a3-11ea-a1f9-00155d1e5b38',
-          'tuda6',
-          'Monie Kamsesa',
-          'These things are NOT EASY',
-          'Some guyt says THEY ARE. What is he smoking!',
+          this.makeid(36),
+          uname,
+          dname,
+          this.state.title,
+          this.state.body,
           'N',
-          '2020-08-25 18:16:29',
-          null,
-          null,
+          time,
         ],
-        function (tx, res) {
-          console.log(res);
+        (tx, res) => {
+          console.log(tx);
           console.log('item:', res.rows.length);
           if (res.rows.length == 0) {
             console.log('Nada');
           }
         },
-        function (err) {
+        (err) => {
           console.log(err);
         },
       );
     });
+
     this.props.navigation.state.params.navigateToHome();
   };
 
   render() {
     return (
-      <View style={{flex: 1}}>
+      <ScrollView style={{flex: 1}}>
         <View style={{margin: 10}}>
           <Text>Participants:</Text>
           <View style={{flexDirection: 'row', flexWrap: 'wrap', marginTop: 5}}>
@@ -98,6 +167,33 @@ export default class NewThread extends Component {
             numberOfLines={9}
           />
         </View>
+        <TouchableOpacity
+          style={{
+            margin: 10,
+            alignSelf: 'center',
+            shadowColor: '#3d3d3d',
+            shadowRadius: 2,
+            shadowOpacity: 0.5,
+            shadowOffset: {
+              height: 1,
+            },
+          }}
+          onPress={() =>
+            ImagePicker.showImagePicker({}, (response) => {
+              console.log(response.uri);
+              this.setState({image: response.uri});
+            })
+          }>
+          <Image source={addImage} style={{height: 40, width: 40}} />
+        </TouchableOpacity>
+        {this.state.image ? (
+          <Image
+            source={{uri: this.state.image}}
+            style={{height: 200, width: 350, margin: 10, alignSelf: 'center'}}
+          />
+        ) : (
+          <></>
+        )}
         <View style={{width: '50%', alignSelf: 'center'}}>
           <Button
             onPress={() => this.addThread()}
@@ -105,7 +201,7 @@ export default class NewThread extends Component {
             title="Submit"
           />
         </View>
-      </View>
+      </ScrollView>
     );
   }
 }

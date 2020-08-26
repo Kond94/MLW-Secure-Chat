@@ -35,6 +35,7 @@ export default class Users extends Component {
               completed: 0,
             };
           });
+
           this.setState({data: threads});
         },
       );
