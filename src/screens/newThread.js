@@ -189,12 +189,12 @@ export default class NewThread extends Component {
         {this.state.image ? (
           <Image
             source={{uri: this.state.image}}
-            style={{height: 200, width: 350, margin: 10, alignSelf: 'center'}}
+            style={{height: 150, width: 300, margin: 10, alignSelf: 'center'}}
           />
         ) : (
           <></>
         )}
-        <View style={{width: '50%', alignSelf: 'center'}}>
+        <View style={{width: '50%', alignSelf: 'center', margin: 10}}>
           <Button
             onPress={() => this.addThread()}
             style={{width: 50}}

@@ -16,25 +16,30 @@ import {
 } from 'react-native';
 import ImagePicker from 'react-native-image-picker';
 import {openDatabase} from 'react-native-sqlite-storage';
+let db = openDatabase({name: 'dmis_chat.db', createFromLocation: 1});
+
 const addImage = require('../../assets/icons/addImage.png');
 const {width, height} = Dimensions.get('window');
 export default class Thread extends Component {
   constructor(props) {
     super(props);
-    this.state = {
-      msg: '',
-      topic: {
-        time: '',
-        title: '',
-        body: '',
-        display_name: '',
-      },
-      messages: [],
-    };
+
     this.send = this.send.bind(this);
     this.reply = this.reply.bind(this);
     this.renderItem = this._renderItem.bind(this);
   }
+
+  state = {
+    msg: '',
+    topic: {
+      time: '',
+      title: '',
+      body: '',
+      display_name: '',
+    },
+    allMessages: [],
+    comments: [],
+  };
 
   reply() {
     var messages = this.state.messages;
@@ -47,36 +52,94 @@ export default class Thread extends Component {
     this.setState({msg: '', messages: messages});
   }
 
-  setUname = async () => {
-    return await AsyncStorage.getItem('entity_display_name');
+  // setUname = async () => {
+  //   return await AsyncStorage.getItem('entity_display_name');
+  // };
+  errorCB = (err) => {
+    console.error('error:', err);
+    this.addLog('Error: ' + (err.message || err));
+    return false;
   };
-  async componentDidMount() {
-    var db = openDatabase({name: 'dmis_chat.db', createFromLocation: 1});
-    var d = await this.setUname();
+
+  addLog(msg) {
+    const {allMessages} = this.state;
+    this.setState({
+      allMessages: [...allMessages, {msg}],
+    });
+  }
+
+  addComment(msg) {
+    const {comments} = this.state;
+    this.setState({
+      comments: [...comments, {msg}],
+    });
+  }
+  queryCommentsSuccess = (tx, results) => {
+    var len = results.rows.length;
+    for (let i = 0; i < len; i++) {
+      let row = results.rows.item(i);
+      this.addComment(
+        `chat_id: ${JSON.stringify(row.chat_id)}, chat_title: ${JSON.stringify(
+          row.chat_title,
+        )}`,
+      );
+    }
+  };
+
+  queryMessagesSuccess = (tx, results) => {
+    var len = results.rows.length;
+    for (let i = 0; i < len; i++) {
+      let row = results.rows.item(i);
+      this.addLog(
+        `chat_id: ${JSON.stringify(row.chat_id)}, chat_title: ${JSON.stringify(
+          row.chat_title,
+        )}`,
+      );
+    }
+  };
+
+  queryThreadMessages = () => {
     db.transaction((txn) => {
       txn.executeSql(
-        "SELECT d.chat_id, d.chat_title, d.chat_body, d.display_name, d.display_time, d.has_attachment, d.chat_read FROM chat_topic_discussion d WHERE d.chat_id = '" +
+        'SELECT d.chat_id, d.chat_title, d.chat_body, d.display_name, d.display_time, d.has_attachment, d.chat_read FROM chat_topic_discussion d  WHERE d.chat_id = ' +
           this.props.navigation.state.params.item.id +
-          "' OR d.thread_root = '" +
+          ' OR d.thread_root = ' +
           this.props.navigation.state.params.item.id +
-          "' ORDER BY d.chat_time",
+          ' ORDER BY d.chat_time',
         [],
-        (tx, res) => {
-          const chats = res.rows.raw().map((i) => {
-            return {
-              id: i.chat_id,
-              msg: i.chat_body,
-              sent:
-                i.display_name.toUpperCase() === d.toUpperCase() ? true : false,
-              name: i.display_name,
-              time: i.display_time,
-            };
-          });
-
-          this.setState({messages: chats});
-        },
+        this.queryMessagesSuccess,
+        this.errorCB,
       );
     });
+  };
+
+  queryComments = (id) => {
+    db.transaction((txn) => {
+      txn.executeSql(
+        'SELECT d.chat_id, d.chat_title, d.chat_body, d.display_name, d.display_time, d.has_attachment, d.chat_read FROM chat_topic_discussion d  WHERE d.chat_id = ' +
+          id +
+          ' OR d.thread_root = ' +
+          id +
+          ' ORDER BY d.chat_time',
+        [],
+        this.queryCommentsSuccess,
+        this.errorCB,
+      );
+    });
+  };
+
+  async componentDidMount() {
+    this.queryThreadMessages();
+    let messages = [];
+    this.state.allMessages.forEach((message) => {
+      let messageWithoutComments = {...message};
+      this.queryComments(message.chat_id);
+      const comments = this.state.comments;
+      const messageWithComments = {...messageWithoutComments, comments};
+      messages.push(messageWithComments);
+    });
+
+    console.log(messages);
   }
 
   send() {
@@ -102,6 +165,11 @@ export default class Thread extends Component {
           <View style={styles.msgBlock}>
             <Text style={styles.msgTxt}>{item.msg}</Text>
             <Text style={styles.time}>{item.name + ' - ' + item.time}</Text>
+            <View style={{flexDirection: 'row'}}>
+              <Text style={{color: 'green', marginHorizontal: 5}}>Reply</Text>
+
+              <Text style={{color: 'blue'}}>Show Comments</Text>
+            </View>
           </View>
         </View>
       );
