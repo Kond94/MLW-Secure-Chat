@@ -9,7 +9,8 @@ import {
   Image,
   Text,
 } from 'react-native';
-
+import Database from './src/util/database';
+const db = new Database();
 import {createSwitchNavigator, createAppContainer} from 'react-navigation';
 import {createStackNavigator} from 'react-navigation-stack';
 import Home from './src/screens/home';
@@ -76,26 +77,18 @@ class SignInScreen extends React.Component {
   }
 
   _signInAsync = async () => {
-    var db = openDatabase({name: 'dmis_chat.db', createFromLocation: 1});
-    db.transaction((txn) => {
-      txn.executeSql('SELECT * FROM chat_entity', [], async (tx, res) => {
-        const users = res.rows.raw().map((u) => {
-          return {
-            username: u.entity_id,
-            password: u.pword,
-            displayName: u.entity_name,
-          };
-        });
-        if (users.find((user) => user.username === this.state.user.username)) {
-          if (
-            users.find((user) => user.password === this.state.user.password)
-          ) {
+    let users = [];
+    db.getUsers()
+      .then(async (data) => {
+        users = data;
+        if (users.find((user) => user.entity_id === this.state.user.username)) {
+          if (users.find((user) => user.pword === this.state.user.password)) {
             await AsyncStorage.setItem('userToken', 'abc');
             await AsyncStorage.setItem('entity_name', this.state.user.username);
             await AsyncStorage.setItem(
               'entity_display_name',
-              users.find((user) => user.username === this.state.user.username)
-                .displayName,
+              users.find((user) => user.entity_id === this.state.user.username)
+                .display_name,
             );
             this.props.navigation.navigate('App');
           } else {
@@ -104,8 +97,13 @@ class SignInScreen extends React.Component {
         } else {
           alert('That username does not exist');
         }
+      })
+      .catch((err) => {
+        console.log(err);
+        this.setState = {
+          isLoading: false,
+        };
       });
-    });
   };
 }
 
@@ -114,27 +112,11 @@ class HomeScreen extends React.Component {
     title: 'Welcome to the app!',
   };
 
-  componentDidMount() {
-    // var db = openDatabase({name: 'dmis_chat.db', createFromLocation: 1});
-    // db.transaction(function (txn) {
-    //   txn.executeSql(
-    //     'SELECT t.chat_id, t.chat_title, t.chat_body, t.display_name, t.display_time, t.message_all, t.message_unread FROM chat_topic t ORDER BY t.chat_time DESC',
-    //     [],
-    //     function (tx, res) {
-    //       console.log('item:', res.rows.length);
-    //       if (res.rows.length == 0) {
-    //         console.log('Nada');
-    //       }
-    //     },
-    //   );
-    // });
-  }
-
   render() {
     return (
       <>
         <Home
-          navigateToConversation={this._showMoreApp}
+          navigateToConversation={this.showMessagingScreen}
           navigateToNewThread={this._showSelectParticipants}
         />
         <Button title="sign me out" onPress={this._signOutAsync} />
@@ -142,8 +124,8 @@ class HomeScreen extends React.Component {
     );
   }
 
-  _showMoreApp = (item) => {
-    this.props.navigation.navigate('Other', {item: item});
+  showMessagingScreen = (item) => {
+    this.props.navigation.navigate('Messaging', {item: item});
   };
 
   _showSelectParticipants = () => {
@@ -156,7 +138,7 @@ class HomeScreen extends React.Component {
   };
 }
 
-class OtherScreen extends React.Component {
+class MessagingScreen extends React.Component {
   static navigationOptions = {
     title: 'Thread',
   };
@@ -304,7 +286,7 @@ const styles = StyleSheet.create({
 
 const AppStack = createStackNavigator({
   Home: HomeScreen,
-  Other: OtherScreen,
+  Messaging: MessagingScreen,
   NewThread: NewThreadScreen,
   SelectParticipants: SelectParticipantsScreen,
 });

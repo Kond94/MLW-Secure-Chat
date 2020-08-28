@@ -56,6 +56,7 @@ SELECT c.chat_id
 			ELSE STRFTIME('%d', c.chat_time) || ' ' || SUBSTR('JanFebMarAprMayJunJulAugSepOctNovDec',STRFTIME('%m',c.chat_time) * 3 + 1, 3) || ' ' || STRFTIME('%Y %H:%M', c.chat_time)
 		END AS display_time
 	, thread_root
+	, thread_parent
 	, c.chat_time
 	, chat_read
 FROM chat c

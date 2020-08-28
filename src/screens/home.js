@@ -10,57 +10,40 @@ import {
   ScrollView,
   Alert,
 } from 'react-native';
-import {openDatabase} from 'react-native-sqlite-storage';
+import ImagePicker from 'react-native-image-picker';
+import Database from '../util/database';
+const db = new Database();
 
 import ActionButton from 'react-native-action-button';
 
-export default class Users extends Component {
+export default class Home extends Component {
   state = {
     data: [],
   };
 
+  getThreads = () => {
+    let threads = [];
+    db.getThreads()
+      .then((data) => {
+        threads = data;
+        this.setState({
+          data: threads,
+          isLoading: false,
+        });
+      })
+      .catch((err) => {
+        console.log(err);
+        this.setState = {
+          isLoading: false,
+        };
+      });
+  };
   componentDidMount = () => {
-    var db = openDatabase({name: 'dmis_chat.db', createFromLocation: 1});
-    db.transaction((txn) => {
-      txn.executeSql(
-        'SELECT t.chat_id, t.chat_title, t.chat_body, t.display_name, t.display_time, t.message_all, t.message_unread FROM chat_topic t ORDER BY t.chat_time DESC',
-        [],
-        (tx, res) => {
-          const threads = res.rows.raw().map((i) => {
-            return {
-              id: i.chat_id,
-              description: i.chat_body,
-              date: i.display_time,
-              completed: 0,
-            };
-          });
-
-          this.setState({data: threads});
-        },
-      );
-    });
+    this.getThreads();
   };
 
   clickEventListener = (item) => {
     this.props.navigateToConversation(item);
-  };
-
-  __getCompletedIcon = (item) => {
-    if (item.completed == 1) {
-      return 'https://img.icons8.com/flat_round/64/000000/checkmark.png';
-    } else {
-      return 'https://img.icons8.com/flat_round/64/000000/delete-sign.png';
-    }
-  };
-
-  __getDescriptionStyle = (item) => {
-    if (item.completed == 1) {
-      return {
-        textDecorationLine: 'line-through',
-        fontStyle: 'italic',
-        color: '#808080',
-      };
-    }
   };
 
   render() {
@@ -71,24 +54,18 @@ export default class Users extends Component {
           columnWrapperStyle={styles.listContainer}
           data={this.state.data}
           keyExtractor={(item) => {
-            return item.id;
+            return item.chat_id;
           }}
           renderItem={({item}) => {
             return (
               <TouchableOpacity
                 style={[styles.card, {borderColor: item.color}]}
-                onPress={() => {
-                  this.clickEventListener(item);
-                }}>
+                onPress={() => this.clickEventListener(item)}>
                 <View style={styles.cardContent}>
-                  <Text
-                    style={[
-                      styles.description,
-                      this.__getDescriptionStyle(item),
-                    ]}>
-                    {item.description}
+                  <Text style={[styles.description]}>{item.chat_title}</Text>
+                  <Text style={styles.date}>
+                    {item.display_name + ' - ' + item.display_time}
                   </Text>
-                  <Text style={styles.date}>{item.date}</Text>
                 </View>
               </TouchableOpacity>
             );

@@ -15,33 +15,30 @@ import {
   AsyncStorage,
 } from 'react-native';
 import ImagePicker from 'react-native-image-picker';
-import {openDatabase} from 'react-native-sqlite-storage';
-let db = openDatabase({name: 'dmis_chat.db', createFromLocation: 1});
-
+import Database from '../util/database';
+const db = new Database();
 const addImage = require('../../assets/icons/addImage.png');
 const {width, height} = Dimensions.get('window');
 export default class Thread extends Component {
   constructor(props) {
     super(props);
-
-    this.send = this.send.bind(this);
-    this.reply = this.reply.bind(this);
-    this.renderItem = this._renderItem.bind(this);
+    super();
+    this.state = {
+      isLoading: true,
+      messages: [],
+      displayName: '',
+      notFound: 'Products not found.\nPlease click (+) button to add it.',
+      msg: '',
+      topic: {
+        time: '',
+        title: '',
+        body: '',
+        display_name: '',
+      },
+    };
   }
 
-  state = {
-    msg: '',
-    topic: {
-      time: '',
-      title: '',
-      body: '',
-      display_name: '',
-    },
-    allMessages: [],
-    comments: [],
-  };
-
-  reply() {
+  reply = () => {
     var messages = this.state.messages;
     messages.push({
       id: Math.floor(Math.random() * 99999999999999999 + 1),
@@ -50,99 +47,41 @@ export default class Thread extends Component {
       image: 'https://www.bootdey.com/img/Content/avatar/avatar6.png',
     });
     this.setState({msg: '', messages: messages});
-  }
+  };
+  setUsername = async () => {
+    return await AsyncStorage.getItem('entity_name');
+  };
+  componentDidMount = async () => {
+    const displayName = await this.setUsername();
 
-  // setUname = async () => {
-  //   return await AsyncStorage.getItem('entity_display_name');
-  // };
-  errorCB = (err) => {
-    console.error('error:', err);
-    this.addLog('Error: ' + (err.message || err));
-    return false;
+    this.setState({displayName: displayName});
+    this.getMessages(this.props.navigation.state.params.item.chat_id);
   };
 
-  addLog(msg) {
-    const {allMessages} = this.state;
-    this.setState({
-      allMessages: [...allMessages, {msg}],
-    });
-  }
-
-  addComment(msg) {
-    const {comments} = this.state;
-    this.setState({
-      comments: [...comments, {msg}],
-    });
-  }
-  queryCommentsSuccess = (tx, results) => {
-    var len = results.rows.length;
-    for (let i = 0; i < len; i++) {
-      let row = results.rows.item(i);
-      this.addComment(
-        `chat_id: ${JSON.stringify(row.chat_id)}, chat_title: ${JSON.stringify(
-          row.chat_title,
-        )}`,
-      );
-    }
-  };
-
-  queryMessagesSuccess = (tx, results) => {
-    var len = results.rows.length;
-    for (let i = 0; i < len; i++) {
-      let row = results.rows.item(i);
-      this.addLog(
-        `chat_id: ${JSON.stringify(row.chat_id)}, chat_title: ${JSON.stringify(
-          row.chat_title,
-        )}`,
-      );
-    }
-  };
-
-  queryThreadMessages = () => {
-    db.transaction((txn) => {
-      txn.executeSql(
-        'SELECT d.chat_id, d.chat_title, d.chat_body, d.display_name, d.display_time, d.has_attachment, d.chat_read FROM chat_topic_discussion d  WHERE d.chat_id = ' +
-          this.props.navigation.state.params.item.id +
-          ' OR d.thread_root = ' +
-          this.props.navigation.state.params.item.id +
-          ' ORDER BY d.chat_time',
-        [],
-        this.queryMessagesSuccess,
-        this.errorCB,
-      );
-    });
-  };
-
-  queryComments = (id) => {
-    db.transaction((txn) => {
-      txn.executeSql(
-        'SELECT d.chat_id, d.chat_title, d.chat_body, d.display_name, d.display_time, d.has_attachment, d.chat_read FROM chat_topic_discussion d  WHERE d.chat_id = ' +
-          id +
-          ' OR d.thread_root = ' +
-          id +
-          ' ORDER BY d.chat_time',
-        [],
-        this.queryCommentsSuccess,
-        this.errorCB,
-      );
-    });
-  };
-
-  async componentDidMount() {
-    this.queryThreadMessages();
+  getMessages = (id) => {
     let messages = [];
-    this.state.allMessages.forEach((message) => {
-      let messageWithoutComments = {...message};
-      this.queryComments(message.chat_id);
-      const comments = this.state.comments;
-      const messageWithComments = {...messageWithoutComments, comments};
-      messages.push(messageWithComments);
-    });
+    db.getMessages(id)
+      .then((data) => {
+        messages = data;
+        messages = messages.map((m) => {
+          const sent = this.state.dispayName === m.display_name ? true : false;
+          return {...m, sent};
+        });
 
-    console.log(messages);
-  }
+        this.setState({
+          messages: messages,
+          isLoading: false,
+        });
+      })
+      .catch((err) => {
+        console.log(err);
+        this.setState = {
+          isLoading: false,
+        };
+      });
+  };
 
-  send() {
+  send = () => {
     if (this.state.msg.length > 0) {
       var messages = this.state.messages;
       messages.push({
@@ -156,15 +95,17 @@ export default class Thread extends Component {
         // this.reply();
       }, 2000);
     }
-  }
+  };
 
-  _renderItem = ({item}) => {
+  renderItem = ({item}) => {
     if (item.sent === false) {
       return (
         <View style={styles.eachMsg}>
           <View style={styles.msgBlock}>
-            <Text style={styles.msgTxt}>{item.msg}</Text>
-            <Text style={styles.time}>{item.name + ' - ' + item.time}</Text>
+            <Text style={styles.msgTxt}>{item.chat_body}</Text>
+            <Text style={styles.time}>
+              {item.display_name + ' - ' + item.display_time}
+            </Text>
             <View style={{flexDirection: 'row'}}>
               <Text style={{color: 'green', marginHorizontal: 5}}>Reply</Text>
 
@@ -177,7 +118,7 @@ export default class Thread extends Component {
       return (
         <View style={styles.rightMsg}>
           <View style={styles.rightBlock}>
-            <Text style={styles.rightTxt}>{item.msg}</Text>
+            <Text style={styles.rightTxt}>{item.chat_body}</Text>
           </View>
         </View>
       );
@@ -191,12 +132,12 @@ export default class Thread extends Component {
           <TouchableOpacity onPress={() => {}}></TouchableOpacity>
           <View>
             <Text style={styles.name}>
-              {this.props.navigation.state.params.item.description}
+              {/* {this.props.navigation.state.params.item.description} */}
             </Text>
             <Text style={styles.time}>
-              {this.state.topic.display_name +
+              {/* {this.state.topic.display_name +
                 ' - ' +
-                this.props.navigation.state.params.item.date}
+                this.props.navigation.state.params.item.date} */}
             </Text>
           </View>
           {/* <Text rkType="primary3 mediumLine">{this.state.topic.body}</Text> */}
@@ -206,7 +147,7 @@ export default class Thread extends Component {
           extraData={this.state}
           data={this.state.messages}
           keyExtractor={(item) => {
-            return item.id;
+            return item.chat_id;
           }}
           renderItem={this.renderItem}
         />
