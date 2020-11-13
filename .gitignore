@@ -28,8 +28,7 @@ build/
 .gradle
 local.properties
 *.iml
-release/
-*.apk
+
 # node.js
 #
 node_modules/

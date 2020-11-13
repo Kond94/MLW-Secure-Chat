@@ -3,12 +3,12 @@ require_relative '../node_modules/@react-native-community/cli-platform-ios/nativ
 
 platform :ios, '10.0'
 
-target 'mlwhealthchat' do
+target 'SecureChat' do
   config = use_native_modules!
 
   use_react_native!(:path => config["reactNativePath"])
 
-  target 'mlwhealthchatTests' do
+  target 'SecureChatTests' do
     inherit! :complete
     # Pods for testing
   end
@@ -23,10 +23,10 @@ target 'mlwhealthchat' do
   end
 end
 
-target 'mlwhealthchat-tvOS' do
-  # Pods for mlwhealthchat-tvOS
+target 'SecureChat-tvOS' do
+  # Pods for SecureChat-tvOS
 
-  target 'mlwhealthchat-tvOSTests' do
+  target 'SecureChat-tvOSTests' do
     inherit! :search_paths
     # Pods for testing
   end

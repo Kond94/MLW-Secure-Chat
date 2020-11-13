@@ -1,9 +1,12 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-  package="com.mlwhealthchat">
-
+xmlns:tools="http://schemas.android.com/tools"
+  package="com.securechat">
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.USE_FINGERPRINT" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.INTERNET" />
 
     <application
       android:name=".MainApplication"
@@ -11,7 +14,14 @@
       android:icon="@mipmap/ic_launcher"
       android:roundIcon="@mipmap/ic_launcher_round"
       android:allowBackup="false"
-      android:theme="@style/AppTheme">
+      android:theme="@style/AppTheme"
+      android:requestLegacyExternalStorage="true"
+      android:usesCleartextTraffic="true"
+      tools:ignore="GoogleAppIndexingWarning"
+      >
+        <uses-library
+            android:name="org.apache.http.legacy"
+            android:required="false" />
       <activity
         android:name=".MainActivity"
         android:label="@string/app_name"
